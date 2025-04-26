@@ -1,0 +1,227 @@
+---
+- name: "Deploy Vulnerable WordPress with WP File Manager (v6.0 - CVE-2020-25213)"
+  hosts: web_server
+  become: yes
+  vars_files:
+    - ../misc/vault.yml
+
+  vars:
+    ansible_become_pass: "{{ web_server_pass }}"
+    # WordPress settings
+    wordpress_url: "https://wordpress.org/latest.tar.gz"
+    wordpress_install_dir: "/var/www/html/wordpress"
+
+    # Database configuration
+    db_name: "wordpress"
+    db_user: "wpuser"
+    db_password: "wppassword"
+    db_root_password: "rootpass"
+
+    # WP File Manager plugin vulnerable version (v6.0)
+    wp_file_manager_url: "https://downloads.wordpress.org/plugin/wp-file-manager.6.0.zip"
+
+  tasks:
+    - name: Ensure apt lists directory exists # Fails due lock if it doesn't exist
+      file:
+        path: /var/lib/apt/lists
+        state: directory
+        mode: '0755'
+
+    - name: "Update APT cache"
+      apt:
+        update_cache: yes
+
+    - name: "Install required packages"
+      apt:
+        name:
+          - apache2
+          - mysql-server
+          - php
+          - php-mysql
+          - php-gd
+          - unzip
+          - curl
+        state: present
+
+    - name: "Ensure Apache is started and enabled"
+      service:
+        name: apache2
+        state: started
+        enabled: yes
+
+    - name: "Install python3-pip"
+      apt:
+        name: python3-pip
+        state: present
+
+    - name: "Ensure PyMySQL is installed (for Python 3)"
+      pip:
+        name: PyMySQL
+        executable: pip3
+      become: yes
+
+    - name: "Set MySQL root password (non-interactive setup)"
+      debconf:
+        name: mysql-server
+        question: mysql-server/root_password
+        value: "{{ db_root_password }}"
+        vtype: password
+      ignore_errors: yes
+
+    - name: "Confirm MySQL root password again"
+      debconf:
+        name: mysql-server
+        question: mysql-server/root_password_again
+        value: "{{ db_root_password }}"
+        vtype: password
+      ignore_errors: yes
+
+    - name: "Create WordPress database"
+      mysql_db:
+        name: "{{ db_name }}"
+        state: present
+        login_user: root
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: "Create WordPress DB user with privileges"
+      mysql_user:
+        name: "{{ db_user }}"
+        password: "{{ db_password }}"
+        priv: "{{ db_name }}.*:ALL"
+        host: "localhost"
+        state: present
+        login_user: root
+        login_password: "{{ db_root_password }}"
+        login_unix_socket: /var/run/mysqld/mysqld.sock
+
+    - name: "Download WordPress tarball"
+      get_url:
+        url: "{{ wordpress_url }}"
+        dest: "/tmp/wordpress.tar.gz"
+        mode: '0644'
+
+    - name: "Extract WordPress into web root"
+      unarchive:
+        src: "/tmp/wordpress.tar.gz"
+        dest: "/var/www/html/"
+        remote_src: yes
+        creates: "{{ wordpress_install_dir }}/wp-settings.php"
+
+    - name: "Copy sample configuration to wp-config.php"
+      command: cp "{{ wordpress_install_dir }}/wp-config-sample.php" "{{ wordpress_install_dir }}/wp-config.php"
+      args:
+        creates: "{{ wordpress_install_dir }}/wp-config.php"
+
+    - name: "Set database name in wp-config.php"
+      lineinfile:
+        path: "{{ wordpress_install_dir }}/wp-config.php"
+        regexp: "^define\\( *'DB_NAME'"
+        line: "define( 'DB_NAME', '{{ db_name }}' );"
+        backrefs: yes
+
+    - name: "Set database user in wp-config.php"
+      lineinfile:
+        path: "{{ wordpress_install_dir }}/wp-config.php"
+        regexp: "^define\\( *'DB_USER'"
+        line: "define( 'DB_USER', '{{ db_user }}' );"
+        backrefs: yes
+
+    - name: "Set database password in wp-config.php"
+      lineinfile:
+        path: "{{ wordpress_install_dir }}/wp-config.php"
+        regexp: "^define\\( *'DB_PASSWORD'"
+        line: "define( 'DB_PASSWORD', '{{ db_password }}' );"
+        backrefs: yes
+
+    - name: "Recursively set ownership on WordPress directory (for testing)"
+      file:
+        path: "{{ wordpress_install_dir }}"
+        owner: www-data
+        group: www-data
+        recurse: yes
+
+    # --- WP File Manager Plugin Installation ---
+    - name: "Remove existing WP File Manager plugin directory if it exists"
+      file:
+        path: "{{ wordpress_install_dir }}/wp-content/plugins/wp-file-manager"
+        state: absent
+
+    - name: "Download vulnerable WP File Manager plugin (version 6.0)"
+      get_url:
+        url: "{{ wp_file_manager_url }}"
+        dest: "/tmp/wp-file-manager.zip"
+        mode: '0644'
+
+    - name: "Create temporary directory for outer zip extraction"
+      file:
+        path: "/tmp/wp-file-manager-outer"
+        state: directory
+        mode: '0755'
+
+    - name: "Unarchive outer WP File Manager zip into temporary directory"
+      unarchive:
+        src: "/tmp/wp-file-manager.zip"
+        dest: "/tmp/wp-file-manager-outer"
+        remote_src: yes
+
+    - name: "Create temporary directory for inner zip extraction"
+      file:
+        path: "/tmp/wp-file-manager-inner"
+        state: directory
+        mode: '0755'
+
+    - name: "Unarchive nested WP File Manager zip file into directory"
+      unarchive:
+        src: "/tmp/wp-file-manager-outer/wp-file-manager/wp-file-manager-6.O.zip"
+        dest: "{{ wordpress_install_dir }}/wp-content/plugins"
+        remote_src: yes
+
+    - name: "Clean up temporary directories"
+      file:
+        path: "{{ item }}"
+        state: absent
+      loop:
+        - "/tmp/wp-file-manager-outer"
+
+    # --- WP-CLI Installation and WordPress Setup ---
+    - name: "Download WP-CLI"
+      get_url:
+        url: "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+        dest: "/tmp/wp-cli.phar"
+        mode: '0755'
+
+    - name: "Move WP-CLI to /usr/local/bin/wp"
+      command: mv /tmp/wp-cli.phar /usr/local/bin/wp
+      args:
+        creates: "/usr/local/bin/wp"
+
+    - name: "Check if WordPress is already installed using WP-CLI"
+      command: wp core is-installed --allow-root
+      args:
+        chdir: "{{ wordpress_install_dir }}"
+      register: wp_installed
+      ignore_errors: yes
+      environment:
+        PATH: "/usr/local/bin:{{ ansible_env.PATH }}"
+        HTTP_HOST: "localhost"
+
+    - name: "Install WordPress using WP-CLI"
+      command: >
+        wp core install --url="http://localhost/wordpress"
+        --title="My Vulnerable WP"
+        --admin_user="admin"
+        --admin_password="adminpassword"
+        --admin_email="admin@example.com"
+        --skip-email --allow-root
+      args:
+        chdir: "{{ wordpress_install_dir }}"
+      when: wp_installed.rc != 0
+      environment:
+        PATH: "/usr/local/bin:{{ ansible_env.PATH }}"
+        HTTP_HOST: "localhost"
+
+  handlers:
+    - name: "Configuration Complete"
+      debug:
+        msg: "WordPress, WP File Manager, and WP-CLI installation have been completed."

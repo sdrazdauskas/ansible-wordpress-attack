@@ -1,0 +1,39 @@
+---
+- name: "Deploy attacker for WordPress with WP File Manager (v6.0 - CVE-2020-25213)"
+  hosts: attack_server
+  become: yes
+  vars_files: 
+    - ../misc/vault.yml
+
+  vars:
+    ansible_become_pass: "{{ attack_server_pass }}"
+    exploit_install_dir: "/tmp/wp-file-manager-CVE-2020-25213"
+
+  tasks:
+    - name: Ensure apt lists directory exists # Fails due lock if it doesn't exist
+      file:
+        path: /var/lib/apt/lists
+        state: directory
+        mode: '0755'
+
+    - name: "Update APT cache"
+      apt:
+        update_cache: yes
+
+    - name: "Install required packages"
+      apt:
+        name:
+          - jq
+          - git
+        state: present
+
+    - name: "Clone WP File Manager exploit repository"
+      git:
+        repo: "https://github.com/mansoorr123/wp-file-manager-CVE-2020-25213.git"
+        dest: "{{ exploit_install_dir }}"
+
+    - name: "Make exploit script executable"
+      file:
+        path: "{{ exploit_install_dir }}/wp-file-manager-exploit.sh"
+        mode: "0755"
+        state: file

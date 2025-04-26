@@ -1,0 +1,12 @@
+---
+- name: Deploy attacker
+  import_playbook: deploy_attacker_wordpress.yml
+  become: yes
+
+- name: Deploy vulnerable Wordpress
+  import_playbook: deployvulnerable_wordpress.yml_
+  become: yes
+
+- name: Start attack simulation
+  import_playbook: attack.yml
+  become: yes
