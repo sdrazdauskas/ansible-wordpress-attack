@@ -4,7 +4,7 @@
   become: yes
 
 - name: Deploy vulnerable Wordpress
-  import_playbook: deployvulnerable_wordpress.yml_
+  import_playbook: deploy_vulnerable_wordpress.yml
   become: yes
 
 - name: Start attack simulation
