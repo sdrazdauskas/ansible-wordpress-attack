@@ -6,6 +6,7 @@
     - ../misc/vault.yml
 
   vars:
+    ansible_become_pass: "{{ web_server_pass }}" # Both are the same in this case
     attacker_ip: "{{ attack_server_ip }}"
     target_ip: "{{ web_server_ip }}"
     pcap_dir: "/tmp/pcap_files"
