@@ -15,6 +15,7 @@ mkdir -p "$(dirname "$VAULT_FILE")" # Create the vault directory if needed
 # Install required components
 echo "Installing required components..."
 sudo apt-get update
+sudo apt-get upgrade -y
 sudo apt-get -y install gnupg wget apt-transport-https python3-venv sshpass
 sudo apt install -y software-properties-common
 sudo apt install -y ansible
@@ -24,7 +25,7 @@ sudo mkdir -p /etc/apt/keyrings
 echo "Adding OpenNebula GPG key..."
 wget -q -O- https://downloads.opennebula.io/repo/repo2.key | sudo gpg --dearmor --yes --output /etc/apt/keyrings/opennebula.gpg
 echo "Adding OpenNebula repository..."
-echo "deb [signed-by=/etc/apt/keyrings/opennebula.gpg] https://downloads.opennebula.io/repo/6.10/Ubuntu/22.04/ stable opennebula" | sudo tee /etc/apt/sources.list.d/opennebula.list
+echo "deb [signed-by=/etc/apt/keyrings/opennebula.gpg] https://downloads.opennebula.io/repo/6.10/Ubuntu/24.04/ stable opennebula" | sudo tee /etc/apt/sources.list.d/opennebula.list
 echo "Updating package list and installing OpenNebula tools..."
 sudo apt-get update
 sudo apt-get install -y opennebula-tools
@@ -143,5 +144,5 @@ ansible-playbook -i ansible/inventory/hosts ansible/main.yml --ask-vault-pass
 
 echo "Installing required Python packages..."
 sudo apt install -y python3-pip
-pip install scapy biopython fastdtw numpy scipy
+pip install scapy biopython fastdtw numpy scipy matplotlib
 python3 analyze_pcap.py

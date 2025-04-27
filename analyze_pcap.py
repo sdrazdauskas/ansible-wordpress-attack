@@ -4,6 +4,8 @@ from fastdtw import fastdtw
 from scipy.spatial.distance import euclidean
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
+import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 
 def extract_features(pcap_file):
     """
@@ -72,6 +74,7 @@ def dynamic_time_warping(seq1, seq2):
     distance, path = fastdtw(seq1.tolist(), seq2.tolist(), dist=lambda a, b: abs(a - b))
     print(f"DTW Distance: {distance}")
     print(f"DTW Path: {path}")
+    plot_dtw_path(seq1, seq2, path)
 
 def euclidean_matching(seq1, seq2):
     """
@@ -82,6 +85,34 @@ def euclidean_matching(seq1, seq2):
         return
     distance = np.linalg.norm(seq1 - seq2)
     print(f"Euclidean Distance: {distance}")
+
+def plot_features(attacker, target, title, ylabel, filename=None):
+    plt.figure(figsize=(10, 4))
+    plt.plot(attacker, label="Attacker", marker='o')
+    plt.plot(target, label="Target", marker='x')
+    plt.title(title)
+    plt.xlabel("Packet Index")
+    plt.ylabel(ylabel)
+    plt.legend()
+    plt.tight_layout()
+    if filename:
+        plt.savefig(filename)
+    else:
+        plt.show()
+    plt.close()
+
+def plot_dtw_path(seq1, seq2, path, title="DTW Path"):
+    plt.figure(figsize=(6, 6))
+    plt.plot(seq1, range(len(seq1)), label="Attacker")
+    plt.plot(seq2, range(len(seq2)), label="Target")
+    for (i, j) in path:
+        plt.plot([seq1[i], seq2[j]], [i, j], color='gray', alpha=0.3)
+    plt.title(title)
+    plt.xlabel("Value")
+    plt.ylabel("Index")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
 
 if __name__ == "__main__":
     # Load PCAP files
@@ -104,3 +135,9 @@ if __name__ == "__main__":
     smith_waterman(attacker_times, target_times)
     dynamic_time_warping(attacker_times, target_times)
     euclidean_matching(attacker_times, target_times)
+
+    # Visualize packet lengths
+    plot_features(attacker_lengths, target_lengths, "Packet Lengths Comparison", "Packet Length", "packet_lengths.png")
+
+    # Visualize inter-arrival times
+    plot_features(attacker_times, target_times, "Inter-Arrival Times Comparison", "Inter-Arrival Time (s)")
