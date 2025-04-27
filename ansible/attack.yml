@@ -55,6 +55,7 @@
     - name: "Stop all tcpdump processes on both machines"
       ansible.builtin.shell: >
         pkill -f "tcpdump -i any"
+      failed_when: false
 
     - name: "Ensure local directory for captured data exists"
       local_action:
