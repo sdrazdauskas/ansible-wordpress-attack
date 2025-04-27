@@ -140,3 +140,8 @@ done
 
 sudo chmod 644 $VAULT_FILE
 ansible-playbook -i ansible/inventory/hosts ansible/main.yml --ask-vault-pass
+
+echo "Installing required Python packages..."
+sudo apt install -y python3-pip
+pip install scapy biopython fastdtw numpy scipy
+python3 analyze_pcap.py
