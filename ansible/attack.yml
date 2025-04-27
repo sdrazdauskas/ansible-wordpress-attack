@@ -43,7 +43,7 @@
 
     - name: "Run attack simulation script"
       ansible.builtin.shell: >
-        bash {{ attack_script_path }} -u {{ target_ip }} -k || exit 1
+        bash {{ attack_script_path }} -u {{ target_ip }}/wordpress -k || exit 1
       when:
         - inventory_hostname == "attack_server"
         - attack_script_check.stat.exists
