@@ -118,8 +118,8 @@ configure_vm() {
 
   # Append VM name and private IP to Ansible hosts file
   echo "[$VM_NAME]" | sudo tee -a $ANSIBLE_HOSTS_FILE
-  echo "$CSSH_PRIP ansible_user=$CUSER" | sudo tee -a $ANSIBLE_HOSTS_FILE
-  echo ""           | sudo tee -a $ANSIBLE_HOSTS_FILE
+  echo "$VM_NAME ansible_host=$CSSH_PRIP ansible_user=$CUSER" | sudo tee -a $ANSIBLE_HOSTS_FILE
+  echo "" | sudo tee -a $ANSIBLE_HOSTS_FILE
   echo
 }
 
@@ -130,8 +130,6 @@ echo "---" | sudo tee $VAULT_FILE
 configure_vm $USERNAME $WEBSERVER_VM_NAME
 configure_vm $USERNAME $ATTACK_VM_NAME
 
-PASSWORD=$(openssl rand -base64 16 | head -c 16)
-echo "db_web_pass: $PASSWORD" | sudo tee -a $VAULT_FILE > /dev/null
 # Loop until the encryption is successful
 while true; do
     sudo ansible-vault encrypt $VAULT_FILE
