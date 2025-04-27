@@ -62,24 +62,26 @@
         chmod 644 {{ pcap_dir }}/*.pcap
       become: yes
 
-    - name: "Ensure local directory for captured data exists"
+    - name: "Ensure local directory for captured data exists and is writable"
       local_action:
         module: file
         path: "./captured_data"
         state: directory
         mode: '0755'
+        owner: sadr0144
+        group: sadr0144
 
     - name: "Retrieve PCAP file from attacker machine"
       fetch:
         src: "{{ pcap_dir }}/attacker.pcap"
-        dest: "./captured_data/attacker.pcap"
+        dest: "../captured_data/attacker.pcap"
         flat: yes
       when: inventory_hostname == "attack_server"
 
     - name: "Retrieve PCAP file from target machine"
       fetch:
         src: "{{ pcap_dir }}/target.pcap"
-        dest: "./captured_data/target.pcap"
+        dest: "../captured_data/target.pcap"
         flat: yes
       when: inventory_hostname == "web_server"
 
