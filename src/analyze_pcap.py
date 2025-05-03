@@ -45,7 +45,7 @@ def needleman_wunsch_align(seq1, seq2):
     alignments = pairwise2.align.globalxx(seq1, seq2)
     # Here, globalxx uses 1 for match and 0 for mismatch/gap penalties.
     for alignment in alignments:
-        print(format_alignment(*alignment))
+        print(format_alignment(*alignment[0]))
     return alignments
 
 # -------------------------------------------------
@@ -66,21 +66,32 @@ def smith_waterman_align(seq1, seq2):
 # Time-Series Matching (DTW)
 # -------------------------------------------------
 
-def dtw_distance(seq1, seq2):
+def dtw_distance(seq1, seq2, visualize=False):
     """
-    For DTW, we need numerical representations of the sequences.
-    In this simple example we'll map the characters to numbers.
-    You could extend this mapping to include multiple numerical features.
+    Converts sequences to numerical arrays based on mapping and computes DTW.
+    If visualize is True, plots the cost matrix and the optimal warping path.
     """
-    # Define a simple mapping
     mapping = {'T': 1, 'U': 2, 'I': 3, 'X': 4}
     vec1 = np.array([mapping.get(ch, 0) for ch in seq1])
     vec2 = np.array([mapping.get(ch, 0) for ch in seq2])
+
+    distance, cost_matrix, acc_cost_matrix, path = dtw(vec1, vec2)
     
-    # Define a simple absolute difference as the local cost metric
-    dist_fun = lambda x, y: abs(x - y)
+    if visualize:
+        plt.figure(figsize=(8, 6))
+        plt.imshow(acc_cost_matrix, origin='lower', cmap='viridis', aspect='auto')
+        # Extract path coordinates for plotting
+        path_x, path_y = zip(*path)
+        plt.plot(path_y, path_x, color='red', linewidth=2, label='Warping Path')
+        plt.xlabel("Sequence 2 Index")
+        plt.ylabel("Sequence 1 Index")
+        plt.title("DTW Accumulated Cost Matrix & Warping Path")
+        plt.colorbar(label="Accumulated Cost")
+        plt.legend()
+        plt.tight_layout()
+        plt.savefig('dtw_plot.png')
+        plt.close()
     
-    distance, cost_matrix, acc_cost_matrix, path = dtw(vec1, vec2, dist=dist_fun)
     return distance
 
 # -------------------------------------------------
@@ -114,7 +125,7 @@ if __name__ == "__main__":
     print("\n--- Local Alignment (Smith-Waterman) ---")
     smith_waterman_align(attacker_seq, target_seq)
     
-    dtw_dist = dtw_distance(attacker_seq, target_seq)
+    dtw_dist = dtw_distance(attacker_seq, target_seq, visualize=True)
     print("\n--- DTW Distance ---")
     print("DTW Distance:", dtw_dist)
     

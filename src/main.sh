@@ -143,8 +143,8 @@ sudo chmod 644 $VAULT_FILE
 ansible-playbook -i $ANSIBLE_HOSTS_FILE ../ansible/main.yml --ask-vault-pass
 
 echo "Installing required Python packages..."
-sudo apt install -y python3-pip
+sudo apt install -y python3-pip tshark
 python3 -m venv venv
 . venv/bin/activate
-pip install pyshark biopython dtw numpy
+pip install pyshark biopython dtw-python numpy
 python3 analyze_pcap.py
