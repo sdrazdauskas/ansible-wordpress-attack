@@ -127,9 +127,9 @@ def needleman_wunsch_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in islice(alignments, 5):
+    for alignment in islice(alignments, 2):
         print(alignment)
-    
+
     return alignments
 
 def smith_waterman_align(seq1, seq2):
@@ -144,7 +144,7 @@ def smith_waterman_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in islice(alignments, 5):
+    for alignment in islice(alignments, 2):
         print(alignment)
         
     return alignments
@@ -215,19 +215,22 @@ def euclidean_distance_matching(vec1, vec2):
         raise ValueError("Vectors must be the same length for direct Euclidean matching.")
     return np.linalg.norm(np.array(vec1) - np.array(vec2))
 
-def plot_features(data1, data2, title, ylabel, filename=None):
+def plot_features(data1, data2, title, ylabel, filename=None, label1="Dataset 1", label2="Dataset 2", xlabel="Index"):
     plt.figure(figsize=(10, 4))
-    plt.plot(data1, label="Data1", marker='o')
-    plt.plot(data2, label="Data2", marker='x')
-    plt.title(title)
-    plt.xlabel("Index")
-    plt.ylabel(ylabel)
-    plt.legend()
+    plt.plot(data1, label=label1, marker='o')
+    plt.plot(data2, label=label2, marker='x')
+    plt.title(title, fontsize=14, fontweight="bold")
+    plt.xlabel(xlabel, fontsize=12)
+    plt.ylabel(ylabel, fontsize=12)
+    plt.legend(fontsize=12)
     plt.tight_layout()
+    
     if filename:
         plt.savefig(filename)
+        print(f"Plot saved to {filename}")
     else:
         plt.show()
+    
     plt.close()
 
 # -------------------------------------------------
@@ -322,10 +325,10 @@ if __name__ == "__main__":
     target_packet, target_inter_arrival = target_features
 
     print("\nNumeric Feature Analysis: Packet Lengths (Attacker vs. Baseline)")
-    sequence_analysis(attacker_packet, baseline_packet, data_type='numeric')
+    sequence_analysis(target_packet, baseline_packet, data_type='numeric')
 
     print("\nNumeric Feature Analysis: Inter-Arrival Times (Attacker vs. Baseline)")
-    sequence_analysis(attacker_inter_arrival, baseline_inter_arrival, data_type='numeric')
+    sequence_analysis(target_inter_arrival, baseline_inter_arrival, data_type='numeric')
 
     # Anomaly detection between baseline and target features
     if detect_anomaly_from_features(baseline_features, target_features):
@@ -334,7 +337,14 @@ if __name__ == "__main__":
         print("No significant anomalies detected in statistical feature analysis.")
 
     # Plot numeric features for visual comparison
-    plot_features(attacker_packet, target_packet,
-                  "Packet Lengths Comparison", "Packet Length", "packet_lengths.png")
-    plot_features(attacker_inter_arrival, target_inter_arrival,
-                  "Inter-Arrival Times Comparison", "Inter-Arrival Time (s)", "inter_arrival_times.png")
+    plot_features(target_packet, baseline_packet,
+              "Packet Lengths Comparison", "Packet Length",
+              filename="../misc/packet_lengths.png",
+              label1="Target Packet Length", label2="Baseline Packet Length",
+              xlabel="Packet Index")
+
+    plot_features(target_packet, baseline_packet,
+              "Inter-Arrival Times Comparison", "Inter-Arrival Time (s)",
+              filename="../misc/inter_arrival_times.png",
+              label1="Target Inter-Arrival Timeh", label2="Baseline Inter-Arrival Time",
+              xlabel="Packet Index")
