@@ -7,8 +7,8 @@ WEBSERVER_VM_NAME="web_server"
 
 CENDPOINT=https://grid5.mif.vu.lt/cloud3/RPC2
 RETRY_SLEEP=10
-ANSIBLE_HOSTS_FILE="ansible/inventory/hosts"
-VAULT_FILE="misc/vault.yml"
+ANSIBLE_HOSTS_FILE="../ansible/inventory/hosts"
+VAULT_FILE="../misc/vault.yml"
 mkdir -p "$(dirname "$ANSIBLE_HOSTS_FILE")" # Create the directory if needed
 mkdir -p "$(dirname "$VAULT_FILE")" # Create the vault directory if needed
 
@@ -140,7 +140,7 @@ while true; do
 done
 
 sudo chmod 644 $VAULT_FILE
-ansible-playbook -i ansible/inventory/hosts ansible/main.yml --ask-vault-pass
+ansible-playbook -i $ANSIBLE_HOSTS_FILE ../ansible/main.yml --ask-vault-pass
 
 echo "Installing required Python packages..."
 sudo apt install -y python3-pip

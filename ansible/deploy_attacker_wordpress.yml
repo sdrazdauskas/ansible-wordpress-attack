@@ -40,6 +40,6 @@
 
     - name: Copy access.php to the attack machine
       copy:
-        src: "access.php"
+        src: "../src/access.php"
         dest: "{{ exploit_install_dir }}/access.php"
         mode: '0755'
