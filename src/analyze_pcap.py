@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from Bio.Align import PairwiseAligner
 from dtw import dtw
+from itertools import islice
 
 def pcap_to_sequence(pcap_file):
     """
@@ -53,7 +54,7 @@ def needleman_wunsch_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in alignments:
+    for alignment in islice(alignments, 10):
         print(alignment)
     
     return alignments
@@ -78,7 +79,7 @@ def smith_waterman_align(seq1, seq2):
 
     alignments = aligner.align(seq1, seq2)
 
-    for alignment in alignments:
+    for alignment in islice(alignments, 10):
         print(alignment)
         
     return alignments
