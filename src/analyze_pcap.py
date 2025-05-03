@@ -4,6 +4,24 @@ import matplotlib.pyplot as plt
 from Bio.Align import PairwiseAligner
 from dtw import dtw
 from itertools import islice
+from scapy.all import rdpcap
+
+def extract_features(pcap_file):
+    """
+    Extracts features from a PCAP file.
+    Features include packet lengths and inter-arrival times as floats.
+    """
+    packets = rdpcap(pcap_file)
+    packet_lengths = []
+    inter_arrival_times = []
+
+    for i, packet in enumerate(packets):
+        packet_lengths.append(len(packet))
+        if i > 0:
+            # Convert times to float to avoid issues with Scapy's EDecimal type.
+            inter_arrival_times.append(float(packet.time) - float(packets[i - 1].time))
+
+    return np.array(packet_lengths), np.array(inter_arrival_times)
 
 def pcap_to_sequence(pcap_file):
     """
@@ -54,7 +72,7 @@ def needleman_wunsch_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in islice(alignments, 10):
+    for alignment in islice(alignments, 5):
         print(alignment)
     
     return alignments
@@ -79,7 +97,7 @@ def smith_waterman_align(seq1, seq2):
 
     alignments = aligner.align(seq1, seq2)
 
-    for alignment in islice(alignments, 10):
+    for alignment in islice(alignments, 5):
         print(alignment)
         
     return alignments
@@ -149,81 +167,73 @@ def euclidean_distance_matching(vec1, vec2):
         raise ValueError("Vectors must be the same length for direct Euclidean matching.")
     return np.linalg.norm(vec1 - vec2)
 
-# Assume we have pre-computed baseline metrics or templates
-baseline_seq = get_baseline_sequence()          # e.g., a typical sequence from normal PCAPs
-normal_dtw_distance_threshold = 50                # arbitrary threshold after evaluation
-normal_global_alignment_score_threshold = 60      # depends on your scoring function
-normal_euclidean_distance_threshold = 10          # for feature vector representations
+def detect_anomaly_from_features(baseline_features, test_features, length_threshold=5, time_threshold=0.5):
+    """
+    Detects anomalies by comparing the baseline feature vectors with the test feature vectors.
+    A threshold is set for the mean differences in packet lengths and inter-arrival times.
+    """
+    baseline_packet, baseline_inter_arrival = baseline_features
+    test_packet, test_inter_arrival = test_features
 
-def detect_anomaly(new_pcap):
-    new_seq = pcap_to_sequence(new_pcap)  # convert incoming PCAP to a sequence
-
-    # Global alignment: lower alignment score may indicate anomaly.
-    global_alignments = needleman_wunsch_align(new_seq, baseline_seq)
-    # Assume you extract the score from the first alignment somehow (this depends on your alignment representation).
-    global_score = extract_score(global_alignments[0])
+    # Compute means for each feature
+    mean_len_baseline = np.mean(baseline_packet)
+    mean_len_test = np.mean(test_packet)
+    mean_time_baseline = np.mean(baseline_inter_arrival) if len(baseline_inter_arrival) > 0 else 0
+    mean_time_test = np.mean(test_inter_arrival) if len(test_inter_arrival) > 0 else 0
     
-    # DTW distance between sequences
-    dtw_dist = dtw_distance(new_seq, baseline_seq, visualize=False)
-    
-    # Euclidean distance if using feature vectors (you might extract these from the PCAP differently)
-    new_features = extract_features(new_pcap)
-    baseline_features = extract_features(baseline_pcap)  # baseline features
-    euclidean_dist = euclidean_distance_matching(new_features, baseline_features)
-    
-    # Decide based on thresholds:
-    if dtw_dist > normal_dtw_distance_threshold:
-        print("Anomaly detected: DTW distance is too high!")
-    if global_score < normal_global_alignment_score_threshold:
-        print("Anomaly detected: Global alignment score is too low!")
-    if euclidean_dist > normal_euclidean_distance_threshold:
-        print("Anomaly detected: Euclidean distance is too high!")
-    
-    # Optionally, return a composite anomaly score
-    anomaly_score = (dtw_dist / normal_dtw_distance_threshold) + \
-                    (normal_global_alignment_score_threshold / global_score) + \
-                    (euclidean_dist / normal_euclidean_distance_threshold)
-    return anomaly_score
+    # Optionally, you could compute standard deviations and use z-scores for better sensitivity.
+    std_len_baseline = np.std(baseline_packet)
+    std_time_baseline = np.std(baseline_inter_arrival) if len(baseline_inter_arrival) > 0 else 1
 
-# Example Detection on a New PCAP
-new_pcap = "captured_data/new_session.pcap"
+    z_len = abs(mean_len_test - mean_len_baseline) / std_len_baseline
+    z_time = abs(mean_time_test - mean_time_baseline) / std_time_baseline
 
+    print(f"Baseline Packet Length Mean: {mean_len_baseline:.2f}, Test Packet Length Mean: {mean_len_test:.2f} (z-score: {z_len:.2f})")
+    print(f"Baseline Inter-Arrival Mean: {mean_time_baseline:.4f}, Test Inter-Arrival Mean: {mean_time_test:.4f} (z-score: {z_time:.2f})")
+    
+    anomaly_detected = False
+    # Here, you can set thresholds based on z-scores or absolute differences.
+    if z_len > length_threshold:
+        print("Anomaly detected in packet lengths!")
+        anomaly_detected = True
+    if z_time > time_threshold:
+        print("Anomaly detected in inter-arrival times!")
+        anomaly_detected = True
 
+    return anomaly_detected
 
 
 if __name__ == "__main__":
     attacker_pcap = "../misc/attacker.pcap"
     target_pcap = "../misc/target.pcap"
+    baseline_pcap = "../misc/baseline.pcap"
     
+    # For sequence-based methods:
     attacker_seq = pcap_to_sequence(attacker_pcap)
     target_seq = pcap_to_sequence(target_pcap)
+    baseline_seq = pcap_to_sequence(baseline_pcap)
+    
+    # For statistical feature analysis:
+    baseline_features = extract_features(baseline_pcap)
+    target_features = extract_features(target_pcap)
     
     print("Attacker Sequence:", attacker_seq)
     print("Defender Sequence:", target_seq)
     
+    # Run sequence alignment methods
     print("\n--- Global Alignment (Needleman-Wunsch) ---")
     needleman_wunsch_align(attacker_seq, target_seq)
     
     print("\n--- Local Alignment (Smith-Waterman) ---")
     smith_waterman_align(attacker_seq, target_seq)
     
+    # Compute DTW distance, which is another way to capture sequence differences.
     dtw_dist = dtw_distance(attacker_seq, target_seq, visualize=True)
     print("\n--- DTW Distance ---")
     print("DTW Distance:", dtw_dist)
     
-    # Example numerical vectors for Euclidean matching:
-    feat_attacker = np.array([1, 2, 3, 4])
-    feat_target = np.array([1, 2, 2, 4])
-    
-    try:
-        euc_dist = euclidean_distance_matching(feat_attacker, feat_target)
-        print("\n--- Euclidean Distance Matching ---")
-        print("Euclidean Distance:", euc_dist)
-    except ValueError as ve:
-        print("Error in Euclidean matching:", ve)
-
-    score = detect_anomaly(new_pcap)
-    if score > some_composite_threshold:
-        print("Overall anomaly detected! Further investigation is needed.")
+    # Detect anomalies using the extracted statistical features:
+    if detect_anomaly_from_features(baseline_features, target_features):
+        print("Network anomaly detected based on statistical feature analysis!")
     else:
-        print("Traffic appears normal.")
+        print("No significant anomalies detected in statistical feature analysis.")
