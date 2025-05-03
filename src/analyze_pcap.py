@@ -127,9 +127,11 @@ def needleman_wunsch_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in islice(alignments, 2):
-        print(alignment)
-
+    # Print the best alignment using next()
+    best_alignment = next(iter(alignments), None)
+    if best_alignment is not None:
+        print("Best Global Alignment:")
+        print(best_alignment)
     return alignments
 
 def smith_waterman_align(seq1, seq2):
@@ -144,9 +146,10 @@ def smith_waterman_align(seq1, seq2):
     aligner.extend_gap_score = 0
 
     alignments = aligner.align(seq1, seq2)
-    for alignment in islice(alignments, 2):
-        print(alignment)
-        
+    best_alignment = next(iter(alignments), None)
+    if best_alignment is not None:
+        print("Best Local Alignment:")
+        print(best_alignment)
     return alignments
 
 # -------------------------------------------------
@@ -268,6 +271,74 @@ def detect_anomaly_from_features(baseline_features, test_features, length_thresh
 
     return anomaly_detected
 
+def detect_anomaly_from_alignment(baseline_seq, test_seq, data_type='numeric', method='global', threshold=None):
+    """
+    Detects anomalies by computing an alignment metric between a baseline sequence and a test sequence.
+    
+    Parameters:
+      baseline_seq: The baseline sequence (numeric array or symbolic string)
+      test_seq: The sequence to test against the baseline
+      data_type: 'numeric' if comparing numeric sequences or 'symbolic' for string sequences
+      method: Which alignment method to use; one of 'global', 'local', or 'dtw'
+      threshold: A numeric threshold for anomaly detection. 
+          For numeric data: if the computed alignment cost > threshold, flag an anomaly.
+          For symbolic data (using similarity scores): if the score < threshold, flag an anomaly.
+          If not provided, default values are used (these must be tuned to your environment).
+    
+    Returns True if an anomaly is detected, False otherwise.
+    """
+    
+    # Compute the alignment metric based on the data type and method
+    if data_type == 'numeric':
+        if method == 'global':
+            cost = numeric_global_alignment(baseline_seq, test_seq)
+        elif method == 'local':
+            cost = numeric_local_alignment(baseline_seq, test_seq)
+        elif method == 'dtw':
+            cost = dtw_distance(baseline_seq, test_seq, visualize=False)
+        else:
+            raise ValueError("Unknown alignment method. Choose 'global', 'local', or 'dtw'.")
+    else:  # symbolic data
+        if method == 'global':
+            # Using Needleman-Wunsch (global). We assume higher alignment scores mean better matching.
+            # (PairwiseAligner returns an Alignment object with a score attribute.)
+            alignments = needleman_wunsch_align(baseline_seq, test_seq)
+            score = alignments[0].score
+            cost = score
+        elif method == 'local':
+            alignments = smith_waterman_align(baseline_seq, test_seq)
+            score = alignments[0].score
+            cost = score
+        elif method == 'dtw':
+            cost = dtw_distance(baseline_seq, test_seq, visualize=False)
+        else:
+            raise ValueError("Unknown alignment method. Choose 'global', 'local', or 'dtw'.")
+
+    # Determine a default threshold if none is provided (these defaults are illustrative)
+    if threshold is None:
+        if data_type == 'numeric':
+            # For numeric alignments, you might expect a low cost when things are "normal"
+            threshold = 100  # Tune experimentally
+        else:
+            # For symbolic alignments, a high score is "normal"; if the score is too low, that is abnormal.
+            threshold = 5  # Tune experimentally
+
+    # Evaluate anomaly based on computed value and threshold.
+    # For numeric data: anomaly if cost (difference) is larger than allowed.
+    # For symbolic data: anomaly if alignment score is lower than allowed.
+    anomaly_detected = False
+    if data_type == 'numeric':
+        if cost > threshold:
+            anomaly_detected = True
+    else:
+        if cost < threshold:
+            anomaly_detected = True
+
+    print(f"Alignment metric ({method}) = {cost}, threshold = {threshold}")
+    print("Anomaly detected:" if anomaly_detected else "No anomaly detected (alignment metric within acceptable range).")
+    return anomaly_detected
+
+
 # -------------------------------------------------
 # Unified Sequence Analysis Function
 # -------------------------------------------------
@@ -331,6 +402,16 @@ if __name__ == "__main__":
         print("Network anomaly detected based on statistical feature analysis!")
     else:
         print("No significant anomalies detected in statistical feature analysis.")
+
+    if detect_anomaly_from_alignment(baseline_packet, target_packet, data_type='numeric', method='global', threshold=100):
+        print("Anomaly detected in packet lengths via alignment!")
+    else:
+        print("Packet lengths within expected range based on alignment.")
+    
+    if detect_anomaly_from_alignment(baseline_seq, target_seq, data_type='symbolic', method='global', threshold=5):
+        print("Anomaly detected in protocol sequence based on alignment!")
+    else:
+        print("Protocol sequence appears normal based on alignment.")
 
     # Plot numeric features for visual comparison
     plot_features(target_packet, baseline_packet,
