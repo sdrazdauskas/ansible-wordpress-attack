@@ -1,5 +1,6 @@
 import pyshark
 import numpy as np
+import matplotlib.pyplot as plt
 from Bio import pairwise2
 from Bio.pairwise2 import format_alignment
 from dtw import dtw
@@ -44,8 +45,7 @@ def needleman_wunsch_align(seq1, seq2):
     """
     alignments = pairwise2.align.globalxx(seq1, seq2)
     # Here, globalxx uses 1 for match and 0 for mismatch/gap penalties.
-    for alignment in alignments:
-        print(format_alignment(*alignment[0]))
+    print(format_alignment(*alignments[0]))
     return alignments
 
 # -------------------------------------------------
@@ -68,31 +68,51 @@ def smith_waterman_align(seq1, seq2):
 
 def dtw_distance(seq1, seq2, visualize=False):
     """
-    Converts sequences to numerical arrays based on mapping and computes DTW.
-    If visualize is True, plots the cost matrix and the optimal warping path.
+    Computes DTW distance between two sequences (after mapping to numerical arrays)
+    and, if visualize is True, saves a plot of the accumulated cost matrix with
+    the warping path.
     """
+    # Convert sequences to numerical arrays using a simple mapping.
     mapping = {'T': 1, 'U': 2, 'I': 3, 'X': 4}
     vec1 = np.array([mapping.get(ch, 0) for ch in seq1])
     vec2 = np.array([mapping.get(ch, 0) for ch in seq2])
-
-    distance, cost_matrix, acc_cost_matrix, path = dtw(vec1, vec2)
     
+    # Compute DTW with internals kept.
+    dtw_result = dtw(vec1, vec2, keep_internals=True)
+    
+    # Access the distance attributes.
+    global_distance = dtw_result.distance  # Minimum global distance.
+    normalized_distance = getattr(dtw_result, 'normalizedDistance', None)
+    print("Global distance:", global_distance)
+    if normalized_distance is not None:
+        print("Normalized distance:", normalized_distance)
+    
+    # For visualization, we use the costMatrix and the warping path.
     if visualize:
-        plt.figure(figsize=(8, 6))
-        plt.imshow(acc_cost_matrix, origin='lower', cmap='viridis', aspect='auto')
-        # Extract path coordinates for plotting
-        path_x, path_y = zip(*path)
-        plt.plot(path_y, path_x, color='red', linewidth=2, label='Warping Path')
-        plt.xlabel("Sequence 2 Index")
-        plt.ylabel("Sequence 1 Index")
-        plt.title("DTW Accumulated Cost Matrix & Warping Path")
-        plt.colorbar(label="Accumulated Cost")
-        plt.legend()
-        plt.tight_layout()
-        plt.savefig('dtw_plot.png')
-        plt.close()
+        try:
+            cost_matrix = dtw_result.costMatrix
+            # Construct a warping path from index1 and index2:
+            path = list(zip(dtw_result.index1, dtw_result.index2))
+        except AttributeError:
+            print("The required attributes for visualization are not available.")
+            cost_matrix, path = None, None
+
+        if cost_matrix is not None and path is not None:
+            plt.figure(figsize=(8, 6))
+            plt.imshow(cost_matrix, origin='lower', cmap='viridis', aspect='auto')
+            path_x, path_y = zip(*path)
+            plt.plot(path_y, path_x, color='red', linewidth=2, label='Warping Path')
+            plt.xlabel("Reference Sequence Index")
+            plt.ylabel("Query Sequence Index")
+            plt.title("DTW Accumulated Cost Matrix & Warping Path")
+            plt.colorbar(label="Accumulated Cost")
+            plt.legend()
+            plt.tight_layout()
+            plt.savefig('dtw_plot.png')
+            plt.close()
+            print(f"Visualization saved as dtw_plot.png")
     
-    return distance
+    return global_distance
 
 # -------------------------------------------------
 # Euclidean Matching for Feature Vectors
@@ -110,8 +130,8 @@ def euclidean_distance_matching(vec1, vec2):
 
 
 if __name__ == "__main__":
-    attacker_pcap = "../captured_data/attacker.pcap"
-    target_pcap = "../captured_data/target.pcap"
+    attacker_pcap = "../misc/attacker.pcap"
+    target_pcap = "../misc/target.pcap"
     
     attacker_seq = pcap_to_sequence(attacker_pcap)
     target_seq = pcap_to_sequence(target_pcap)
