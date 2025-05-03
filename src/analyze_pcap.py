@@ -299,21 +299,18 @@ def sequence_analysis(seq1, seq2, data_type='symbolic'):
 
 
 if __name__ == "__main__":
-    attacker_pcap = "../misc/attacker.pcap"
-    target_pcap = "../misc/target.pcap"
+    target_pcap = "../misc/attacker.pcap"
     baseline_pcap = "../misc/baseline.pcap"
     
     # Retrieve symbolic sequences (e.g., protocol mappings)
-    attacker_seq = pcap_to_sequence(attacker_pcap)
     target_seq = pcap_to_sequence(target_pcap)
     baseline_seq = pcap_to_sequence(baseline_pcap)
     
-    print("Attacker Sequence:", attacker_seq)
+    print("Baseline Sequence:", baseline_seq)
     print("Target Sequence:", target_seq)
     
     # Retrieve numeric features (packet lengths and inter-arrival times)
     baseline_features = extract_features(baseline_pcap)
-    attacker_features = extract_features(attacker_pcap)
     target_features = extract_features(target_pcap)
     
     print("\nSymbolic Sequence Analysis (Target vs. Baseline):")
@@ -321,7 +318,6 @@ if __name__ == "__main__":
     
     # For numeric analyses, deconstruct features
     baseline_packet, baseline_inter_arrival = baseline_features
-    attacker_packet, attacker_inter_arrival = attacker_features
     target_packet, target_inter_arrival = target_features
 
     print("\nNumeric Feature Analysis: Packet Lengths (Attacker vs. Baseline)")
