@@ -1,8 +1,7 @@
 import pyshark
 import numpy as np
 import matplotlib.pyplot as plt
-from Bio import pairwise2
-from Bio.pairwise2 import format_alignment
+from Bio.Align import PairwiseAligner
 from dtw import dtw
 
 def pcap_to_sequence(pcap_file):
@@ -39,13 +38,24 @@ def pcap_to_sequence(pcap_file):
 
 def needleman_wunsch_align(seq1, seq2):
     """
-    Uses Biopython's pairwise2 to perform a full sequence (global)
-    alignment. Here we use a simple scoring: +1 for a match, 0 for a mismatch.
-    You can modify the scoring matrix as needed.
+    Uses Bio.Align.PairwiseAligner to perform a full sequence (global)
+    alignment. This example sets up a simplified scoring system:
+      - +1 for a match
+      - 0 for a mismatch or gap
     """
-    alignments = pairwise2.align.globalxx(seq1, seq2)
-    # Here, globalxx uses 1 for match and 0 for mismatch/gap penalties.
-    print(format_alignment(*alignments[0]))
+    aligner = PairwiseAligner()
+    aligner.mode = "global"
+    # Set scoring to mimic globalxx from pairwise2: +1 for match,
+    # 0 for mismatch and gaps. (PairwiseAligner requires gap scores.)
+    aligner.match_score = 1
+    aligner.mismatch_score = 0
+    aligner.open_gap_score = 0
+    aligner.extend_gap_score = 0
+
+    alignments = aligner.align(seq1, seq2)
+    for alignment in alignments:
+        print(alignment)
+    
     return alignments
 
 # -------------------------------------------------
@@ -54,12 +64,23 @@ def needleman_wunsch_align(seq1, seq2):
 
 def smith_waterman_align(seq1, seq2):
     """
-    Uses Biopython's pairwise2 for local alignment.
-    This will pick out the best matching sub-sequences between the two sequences.
+    Uses Bio.Align.PairwiseAligner for local (Smith–Waterman) alignment.
+    This function picks out the best matching sub-sequences between the two sequences.
     """
-    alignments = pairwise2.align.localxx(seq1, seq2)
+    aligner = PairwiseAligner()
+    aligner.mode = "local"
+
+    # Configure the scoring system:
+    aligner.match_score = 1
+    aligner.mismatch_score = 0
+    aligner.open_gap_score = -1
+    aligner.extend_gap_score = 0
+
+    alignments = aligner.align(seq1, seq2)
+
     for alignment in alignments:
-        print(format_alignment(*alignment))
+        print(alignment)
+        
     return alignments
 
 # -------------------------------------------------
