@@ -99,8 +99,8 @@ def euclidean_distance_matching(vec1, vec2):
 
 
 if __name__ == "__main__":
-    attacker_pcap = "captured_data/attacker.pcap"
-    target_pcap = "captured_data/target.pcap"
+    attacker_pcap = "../captured_data/attacker.pcap"
+    target_pcap = "../captured_data/target.pcap"
     
     attacker_seq = pcap_to_sequence(attacker_pcap)
     target_seq = pcap_to_sequence(target_pcap)

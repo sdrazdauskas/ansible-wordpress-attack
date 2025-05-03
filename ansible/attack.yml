@@ -128,14 +128,14 @@
     - name: "Retrieve PCAP file from attacker machine"
       fetch:
         src: "{{ pcap_dir }}/attacker.pcap"
-        dest: "../captured_data/attacker.pcap"
+        dest: "../misc/attacker.pcap"
         flat: yes
       when: inventory_hostname == "attack_server"
 
     - name: "Retrieve PCAP file from target machine"
       fetch:
         src: "{{ pcap_dir }}/target.pcap"
-        dest: "../captured_data/target.pcap"
+        dest: "../misc/target.pcap"
         flat: yes
       when: inventory_hostname == "web_server"
 
