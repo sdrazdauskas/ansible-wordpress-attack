@@ -33,6 +33,21 @@
         path: "{{ attack_script_path }}"
       register: attack_script_check
 
+    - name: "Start baseline packet capture on target machine"
+      ansible.builtin.shell: >
+        nohup tcpdump -i any -w {{ pcap_dir }}/baseline_target.pcap port 80 > /tmp/tcpdump_baseline_target.log 2>&1 &
+      when: inventory_hostname == "web_server"
+
+    - name: "Pause for baseline capture duration"
+      ansible.builtin.pause:
+        seconds: "{{ capture_duration }}"
+      when: inventory_hostname == "web_server"
+
+    - name: "Stop baseline tcpdump process on target machine"
+      ansible.builtin.shell: >
+        pkill -f "tcpdump -i any -w {{ pcap_dir }}/baseline_target.pcap"
+      when: inventory_hostname == "web_server"
+
     - name: "Start packet capture on attacker machine"
       ansible.builtin.shell: >
         nohup tcpdump -i any -w {{ pcap_dir }}/attacker.pcap host {{ target_ip }} > /tmp/tcpdump_attacker.log 2>&1 &

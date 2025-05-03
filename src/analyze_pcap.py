@@ -143,12 +143,52 @@ def dtw_distance(seq1, seq2, visualize=False):
 def euclidean_distance_matching(vec1, vec2):
     """
     Computes the Euclidean distance between two vectors.
-    This function assumes vec1 and vec2 are numpy arrays; you would
-    typically generate these feature vectors from the PCAP.
+    This function assumes vec1 and vec2 are numpy arrays
     """
     if len(vec1) != len(vec2):
         raise ValueError("Vectors must be the same length for direct Euclidean matching.")
     return np.linalg.norm(vec1 - vec2)
+
+# Assume we have pre-computed baseline metrics or templates
+baseline_seq = get_baseline_sequence()          # e.g., a typical sequence from normal PCAPs
+normal_dtw_distance_threshold = 50                # arbitrary threshold after evaluation
+normal_global_alignment_score_threshold = 60      # depends on your scoring function
+normal_euclidean_distance_threshold = 10          # for feature vector representations
+
+def detect_anomaly(new_pcap):
+    new_seq = pcap_to_sequence(new_pcap)  # convert incoming PCAP to a sequence
+
+    # Global alignment: lower alignment score may indicate anomaly.
+    global_alignments = needleman_wunsch_align(new_seq, baseline_seq)
+    # Assume you extract the score from the first alignment somehow (this depends on your alignment representation).
+    global_score = extract_score(global_alignments[0])
+    
+    # DTW distance between sequences
+    dtw_dist = dtw_distance(new_seq, baseline_seq, visualize=False)
+    
+    # Euclidean distance if using feature vectors (you might extract these from the PCAP differently)
+    new_features = extract_features(new_pcap)
+    baseline_features = extract_features(baseline_pcap)  # baseline features
+    euclidean_dist = euclidean_distance_matching(new_features, baseline_features)
+    
+    # Decide based on thresholds:
+    if dtw_dist > normal_dtw_distance_threshold:
+        print("Anomaly detected: DTW distance is too high!")
+    if global_score < normal_global_alignment_score_threshold:
+        print("Anomaly detected: Global alignment score is too low!")
+    if euclidean_dist > normal_euclidean_distance_threshold:
+        print("Anomaly detected: Euclidean distance is too high!")
+    
+    # Optionally, return a composite anomaly score
+    anomaly_score = (dtw_dist / normal_dtw_distance_threshold) + \
+                    (normal_global_alignment_score_threshold / global_score) + \
+                    (euclidean_dist / normal_euclidean_distance_threshold)
+    return anomaly_score
+
+# Example Detection on a New PCAP
+new_pcap = "captured_data/new_session.pcap"
+
+
 
 
 if __name__ == "__main__":
@@ -172,7 +212,6 @@ if __name__ == "__main__":
     print("DTW Distance:", dtw_dist)
     
     # Example numerical vectors for Euclidean matching:
-    # (In practice these would come from more detailed analysis.)
     feat_attacker = np.array([1, 2, 3, 4])
     feat_target = np.array([1, 2, 2, 4])
     
@@ -182,3 +221,9 @@ if __name__ == "__main__":
         print("Euclidean Distance:", euc_dist)
     except ValueError as ve:
         print("Error in Euclidean matching:", ve)
+
+    score = detect_anomaly(new_pcap)
+    if score > some_composite_threshold:
+        print("Overall anomaly detected! Further investigation is needed.")
+    else:
+        print("Traffic appears normal.")
