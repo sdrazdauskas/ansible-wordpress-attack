@@ -146,5 +146,5 @@ echo "Installing required Python packages..."
 sudo apt install -y python3-pip
 python3 -m venv venv
 . venv/bin/activate
-pip install scapy biopython fastdtw numpy scipy matplotlib
+pip install pyshark biopython dtw numpy
 python3 analyze_pcap.py
