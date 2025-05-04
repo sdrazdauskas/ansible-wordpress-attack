@@ -38,6 +38,14 @@
         nohup tcpdump -i any -w {{ pcap_dir }}/baseline_target.pcap port 80 > /tmp/tcpdump_baseline_target.log 2>&1 &
       when: inventory_hostname == "web_server"
 
+    - name: "Generate baseline HTTP traffic via curl"
+      ansible.builtin.shell: |
+        for i in {1..5}; do
+          curl -s "http://{{ target_ip }}/wordpress" > /dev/null
+          sleep 1
+        done
+      when: inventory_hostname == "attack_server"
+
     - name: "Pause for baseline capture duration"
       ansible.builtin.pause:
         seconds: "{{ capture_duration }}"
