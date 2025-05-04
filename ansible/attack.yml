@@ -43,9 +43,10 @@
         seconds: "{{ capture_duration }}"
       when: inventory_hostname == "web_server"
 
-    - name: "Stop baseline tcpdump process on target machine"
+    - name: "Stop all tcpdump processes for baseline"
       ansible.builtin.shell: >
-        pkill -f "tcpdump -i any -w {{ pcap_dir }}/baseline_target.pcap"
+        pkill -f "tcpdump -i any"
+      failed_when: false
       when: inventory_hostname == "web_server"
 
     - name: "Start packet capture on attacker machine"
