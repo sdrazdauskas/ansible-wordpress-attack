@@ -371,7 +371,7 @@ def sequence_analysis(seq1, seq2, data_type='symbolic'):
 
 if __name__ == "__main__":
     target_pcap = "../misc/attacker.pcap"
-    baseline_pcap = "../misc/baseline.pcap"
+    baseline_pcap = "../misc/baseline_target.pcap"
     
     # Retrieve symbolic sequences (e.g., protocol mappings)
     target_seq = pcap_to_sequence(target_pcap)
