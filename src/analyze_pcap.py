@@ -404,14 +404,34 @@ if __name__ == "__main__":
         print("No significant anomalies detected in statistical feature analysis.")
 
     if detect_anomaly_from_alignment(baseline_packet, target_packet, data_type='numeric', method='global', threshold=100):
-        print("Anomaly detected in packet lengths via alignment!")
+        print("Anomaly detected in packet lengths via global alignment!")
     else:
-        print("Packet lengths within expected range based on alignment.")
+        print("Packet lengths within expected range based on global alignment.")
     
     if detect_anomaly_from_alignment(baseline_seq, target_seq, data_type='symbolic', method='global', threshold=5):
-        print("Anomaly detected in protocol sequence based on alignment!")
+        print("Anomaly detected in protocol sequence based on global alignment!")
     else:
-        print("Protocol sequence appears normal based on alignment.")
+        print("Protocol sequence appears normal based on global alignment.")
+
+    if detect_anomaly_from_alignment(baseline_packet, target_packet, data_type='numeric', method='local', threshold=100):
+        print("Anomaly detected in packet lengths via local alignment!")
+    else:
+        print("Packet lengths within expected range based on local alignment.")
+    
+    if detect_anomaly_from_alignment(baseline_seq, target_seq, data_type='symbolic', method='local', threshold=5):
+        print("Anomaly detected in protocol sequence based on local alignment!")
+    else:
+        print("Protocol sequence appears normal based on local alignment.")
+
+    if detect_anomaly_from_alignment(baseline_packet, target_packet, data_type='numeric', method='dtw', threshold=100):
+        print("Anomaly detected in packet lengths via dtw alignment!")
+    else:
+        print("Packet lengths within expected range based on dtw alignment.")
+    
+    if detect_anomaly_from_alignment(baseline_seq, target_seq, data_type='symbolic', method='dtw', threshold=5):
+        print("Anomaly detected in protocol sequence based on dtw alignment!")
+    else:
+        print("Protocol sequence appears normal based on dtw alignment.")
 
     # Plot numeric features for visual comparison
     plot_features(target_packet, baseline_packet,
