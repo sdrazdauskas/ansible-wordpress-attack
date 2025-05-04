@@ -200,7 +200,7 @@ def dtw_distance(seq1, seq2, visualize=False):
             plt.colorbar(label="Accumulated Cost")
             plt.legend()
             plt.tight_layout()
-            plt.savefig('dtw_plot.png')
+            plt.savefig('../misc/dtw_plot.png')
             plt.close()
             print("Visualization saved as dtw_plot.png")
     
