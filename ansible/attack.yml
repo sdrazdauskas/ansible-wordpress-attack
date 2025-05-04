@@ -40,7 +40,7 @@
 
     - name: "Generate baseline HTTP traffic via curl"
       ansible.builtin.shell: |
-        for i in {1..5}; do
+        for i in {1..50}; do
           curl -s "http://{{ target_ip }}/wordpress" > /dev/null
           sleep 1
         done
